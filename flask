@@ -1,0 +1,61 @@
+from flask import Flask, request
+import requests
+import json
+
+app = Flask(__name__)
+signal1 = None
+signal2 = None
+
+def send_confirmation_signal():
+    global signal1, signal2
+    if signal1 is not None and signal2 is not None:
+        # Здесь вы можете выполнить необходимую логику для объединения сигналов
+        combined_signal = signal1 + " confirmed"
+        
+        # Здесь отправляем подтвержденный сигнал на третий веб-хук
+        webhook_url = 'https://hook.finandy.com/OQlhFTooU1-WG_lrqVUK'  # Замените на URL третьего веб-хука
+        
+        coin = extract_coin(signal1, signal2)  # Извлечь значение монеты
+        
+        payload = {
+            "name": "WebhookConfirm",
+            "secret": "l18axdbief",
+            "side": "buy",
+            "symbol": f"{coin}USDT"
+        }
+        
+        headers = {
+            'Content-Type': 'application/json'
+        }
+        
+        response = requests.post(webhook_url, json=payload, headers=headers)
+        if response.status_code == 200:
+            print('Подтвержденный сигнал успешно отправлен на третий веб-хук.')
+        else:
+            print('Ошибка при отправке подтвержденного сигнала на третий веб-хук.')
+
+def extract_coin(signal1, signal2):
+    # Здесь вы можете добавить свою логику извлечения значения монеты из сигналов
+    # В данном примере, мы просто берем значение монеты из первого сигнала
+    coin = signal1.upper()  # Приводим значение монеты к верхнему регистру
+    return coin
+
+@app.route('/hooks.zapier.com/hooks/catch/15737497/3doayc2/', methods=['POST'])
+def handle_webhook1():
+    global signal1
+    data = request.get_json()
+    signal1 = data['signal']
+    print('Получен сигнал 1:', signal1)
+    return 'OK'
+
+@app.route('/webhook2', methods=['POST'])
+def handle_webhook2():
+    global signal2
+    data = request.get_json()
+    signal2 = data['signal']
+    print('Получен сигнал 2:', signal2)
+    send_confirmation_signal()
+    return 'OK'
+
+if __name__ == '__main__':
+    app.run()
